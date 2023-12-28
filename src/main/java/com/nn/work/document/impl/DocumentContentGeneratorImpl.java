@@ -6,9 +6,12 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
@@ -18,6 +21,95 @@ import java.util.StringJoiner;
  * @date 2023/12/20
  */
 public class DocumentContentGeneratorImpl implements DocumentContentGenerator {
+
+    @Override
+    public void generateRequirementContent(String sourceFilePath, int requirementIndex, int requirementDescIndex, String targetFilePath) {
+        try (FileInputStream fis = new FileInputStream(sourceFilePath);
+             Workbook workbook = new XSSFWorkbook(fis);) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            // 设置从第2行开始读取数据（0-based index）
+            int startRow = 1;
+
+            StringBuilder stringBuilder = new StringBuilder();
+
+            for (int rowIndex = startRow; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                Row row = sheet.getRow(rowIndex);
+                if(row == null) {
+                    break;
+                }
+                Cell cell = row.getCell(requirementIndex);
+                // 判断 cell 是否在合并区域内
+                if (isMergedCell(sheet, cell)) {
+                    // 获取合并区域的信息
+                    CellRangeAddress mergedRegion = getMergedRegion(sheet, cell);
+
+                    // 输出合并区域的开始行和结束行
+                    int startRowMerged = mergedRegion.getFirstRow();
+                    int endRowMerged = mergedRegion.getLastRow();
+//System.out.println(cell.getStringCellValue());
+                    stringBuilder.append(cell.getStringCellValue() +"\n");
+                    // 继续读取第9列信息
+                    final String descStr = readColumn9Data(sheet, requirementDescIndex, startRowMerged, endRowMerged);
+                    stringBuilder.append(descStr + "\n");
+
+                    // 设置下一次迭代的起始行为合并区域的结束行
+                    rowIndex = endRowMerged;
+                }
+                Files.write(Paths.get(targetFilePath), stringBuilder.toString().getBytes());
+
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private static String readColumn9Data(Sheet sheet, int columnIndexToRead, int startRow, int endRow) {
+//        int columnIndexToRead = 9;  // 第9列，0-based index
+
+        StringJoiner stringJoiner = new StringJoiner("，");
+        for (int rowIndex = startRow; rowIndex <= endRow; rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            Cell cell = row.getCell(columnIndexToRead);
+
+            // 输出第9列的值
+            String column9Value = (cell != null) ? cell.getStringCellValue() : "";
+//            System.out.println("第9列的值: " + column9Value);
+            stringJoiner.add(column9Value);
+        }
+        return stringJoiner.toString();
+    }
+
+    private static boolean isMergedCell(Sheet sheet, Cell cell) {
+        int rowIndex = cell.getRowIndex();      //该方法用于获取单元格所在的行的索引（行号），索引是从0开始的。
+        int columnIndex = cell.getColumnIndex();    //该方法用于获取单元格所在的列的索引（列号），索引同样是从0开始的。
+
+        for (CellRangeAddress mergedRegion : sheet.getMergedRegions()) {
+            if (mergedRegion.isInRange(rowIndex, columnIndex)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static CellRangeAddress getMergedRegion(Sheet sheet, Cell cell) {
+        int rowIndex = cell.getRowIndex();
+        int columnIndex = cell.getColumnIndex();
+
+        for (CellRangeAddress mergedRegion : sheet.getMergedRegions()) {
+            if (mergedRegion.isInRange(rowIndex, columnIndex)) {
+                return mergedRegion;
+            }
+        }
+        return null;
+    }
+
+    private static int getColumnIndex(String columnName) {
+        // 将列名转换为列索引，比如将 "A" 转换为 0，"B" 转换为 1，以此类推
+        return CellReference.convertColStringToIndex(columnName);
+    }
 
     @Override
     public void generateUnitTestContent(String sourceFilePath, int columnIndexToRead, String targetFilePath) {

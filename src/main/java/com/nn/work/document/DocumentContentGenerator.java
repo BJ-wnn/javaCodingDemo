@@ -4,6 +4,26 @@ public interface DocumentContentGenerator {
 
 
     /**
+     * 需求文档，生成 需求内容。
+     *
+     * 源文件：
+     *
+     * 4a角色新增  输入4a角色信息
+     *           保存4a角色信息
+     * 结果例如：
+     * 4a角色新增
+     * 输入4a角色信息，保存4a角色信息
+     *
+     * @param sourceFilePath
+     * @param requirementIndex
+     * @param requirementDescIndex
+     * @param targetFilePath
+     */
+    void generateRequirementContent(String sourceFilePath, int requirementIndex, int  requirementDescIndex, String targetFilePath);
+
+
+
+    /**
      * 单元测试文档，生成 测试内容。
      *
      * 例如：
