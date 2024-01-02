@@ -3,8 +3,12 @@ package com.nn.work.document;
 public interface DocumentContentGenerator {
 
 
+
+
+
     /**
-     * 需求文档，生成 需求内容。
+     * 需求文档，生成 需求内容。读取合并单元格和 合并单元范围内的后一列数据。
+     *
      *
      * 源文件：
      *
